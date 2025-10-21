@@ -30,7 +30,7 @@ from launch_ros.substitutions import FindPackageShare
 
 
 def generate_robot_description(context: LaunchContext, description_package, description_file,
-                               arm_type, use_fake_hardware, can_interface, arm_prefix):
+                               arm_type, use_fake_hardware, can_interface, can_fd, arm_prefix):
     """Generate robot description using xacro processing."""
 
     # Substitute launch configuration values
@@ -39,6 +39,7 @@ def generate_robot_description(context: LaunchContext, description_package, desc
     arm_type_str = context.perform_substitution(arm_type)
     use_fake_hardware_str = context.perform_substitution(use_fake_hardware)
     can_interface_str = context.perform_substitution(can_interface)
+    can_fd_str = context.perform_substitution(can_fd)
     arm_prefix_str = context.perform_substitution(arm_prefix)
 
     # Build xacro file path
@@ -56,6 +57,7 @@ def generate_robot_description(context: LaunchContext, description_package, desc
             "use_fake_hardware": use_fake_hardware_str,
             "ros2_control": "true",
             "can_interface": can_interface_str,
+            "can_fd": can_fd_str,
             "arm_prefix": arm_prefix_str,
         }
     ).toprettyxml(indent="  ")
@@ -64,12 +66,12 @@ def generate_robot_description(context: LaunchContext, description_package, desc
 
 
 def robot_nodes_spawner(context: LaunchContext, description_package, description_file,
-                        arm_type, use_fake_hardware, controllers_file, can_interface, arm_prefix):
+                        arm_type, use_fake_hardware, controllers_file, can_interface, can_fd, arm_prefix):
     """Spawn both robot state publisher and control nodes with shared robot description."""
 
     # Generate robot description once
     robot_description = generate_robot_description(
-        context, description_package, description_file, arm_type, use_fake_hardware, can_interface, arm_prefix
+        context, description_package, description_file, arm_type, use_fake_hardware, can_interface, can_fd, arm_prefix
     )
 
     # Get controllers file path
@@ -144,6 +146,11 @@ def generate_launch_description():
             description="CAN interface to use.",
         ),
         DeclareLaunchArgument(
+            "can_fd",
+            default_value="false",
+            description="CAN FD Mode or not",
+        ),
+        DeclareLaunchArgument(
             "controllers_file",
             default_value="openarm_v10_controllers.yaml",
             description="Controllers file(s) to use. Can be a single file or comma-separated list of files.",
@@ -159,6 +166,7 @@ def generate_launch_description():
     runtime_config_package = LaunchConfiguration("runtime_config_package")
     controllers_file = LaunchConfiguration("controllers_file")
     can_interface = LaunchConfiguration("can_interface")
+    can_fd = LaunchConfiguration("can_fd")
     arm_prefix = LaunchConfiguration("arm_prefix")
     # Configuration file paths
     controllers_file = PathJoinSubstitution(
@@ -170,7 +178,7 @@ def generate_launch_description():
     robot_nodes_spawner_func = OpaqueFunction(
         function=robot_nodes_spawner,
         args=[description_package, description_file, arm_type,
-              use_fake_hardware, controllers_file, can_interface, arm_prefix]
+              use_fake_hardware, controllers_file, can_interface, can_fd, arm_prefix]
     )
     # RViz configuration
     rviz_config_file = PathJoinSubstitution(
